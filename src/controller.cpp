@@ -30,6 +30,49 @@ static TaskHandle_t *thc = nullptr;    // 连接手柄任务句柄
 std::atomic<bool> SCAN_NEW(false);     // 是否连接新设备
 std::atomic<bool> IS_CONNECTED(false); // 是否已连接
 
+// 过滤摇杆输出到-2048~2047;
+short analogHatFilter(uint16_t rawValue)
+{
+  const int mid = 32768;      // 摇杆中间原始值
+  const int deadzone = 4000;  // 虚位死区阈值（根据实际硬件调整）
+  const int maxOutput = 2048; // 目标最大输出值
+
+  // 计算相对于中间值的偏移量（范围：-32768 ~ +32767）
+  int offset = (int)rawValue - mid;
+
+  // 死区过滤：中间虚位部分直接返回0
+  if (abs(offset) <= deadzone)
+    return 0;
+
+  // 确定方向（正：右摇杆，负：左摇杆）
+  int direction = (offset > 0) ? 1 : -1;
+
+  // 计算有效偏移量（扣除死区后的实际偏移）
+  int effectiveOffset = abs(offset) - deadzone;
+
+  // 计算有效范围的最大偏移量（左/右可能不对称）
+  int maxEffectiveOffset;
+  if (direction == 1)
+  {
+    // 右侧有效范围：从 (mid + deadzone) 到 65535
+    maxEffectiveOffset = 65535 - (mid + deadzone);
+  }
+  else
+  {
+    // 左侧有效范围：从 0 到 (mid - deadzone)
+    maxEffectiveOffset = mid - deadzone;
+  }
+
+  // 线性缩放至目标范围 [-2048, 2048]
+  int scaledValue = (effectiveOffset * maxOutput) / maxEffectiveOffset;
+
+  // 确保不超出目标范围
+  scaledValue = (scaledValue > maxOutput) ? maxOutput : scaledValue;
+
+  // 返回带方向的最终值
+  return (short)(direction * scaledValue);
+}
+
 static struct bt_dev // 蓝牙设备信息
 {
   esp_bd_addr_t bda;
