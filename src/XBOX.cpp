@@ -1,12 +1,9 @@
-#include <controller.h>
+#include "XBOX.h"
 #include "nvs_flash.h"
-#include "FreeRTOS.h"
 #include "esp_log.h"
 #include "config.h"
 #include "tool.h"
 #include "atomic"
-#include "freertos/atomic.h"
-#include "freertos/semphr.h"
 #include "rw_lock.h"
 
 #include "esp_hidh.h"
@@ -17,8 +14,8 @@
 #define XBOX_CONTROLLER_INDEX_BUTTONS_MAIN 13
 #define XBOX_CONTROLLER_INDEX_BUTTONS_CENTER 14
 #define XBOX_CONTROLLER_INDEX_BUTTONS_SHARE 15
-CONTROLLER Controller; // 控制器对象
-rwlock_t rwlock;       // 读写锁
+XBOX Controller; // 控制器对象
+rwlock_t rwlock; // 读写锁
 
 // NVS 储存
 #define NVS_NAMESPACE "bt_controller"
@@ -29,6 +26,9 @@ rwlock_t rwlock;       // 读写锁
 static TaskHandle_t *thc = nullptr;    // 连接手柄任务句柄
 std::atomic<bool> SCAN_NEW(false);     // 是否连接新设备
 std::atomic<bool> IS_CONNECTED(false); // 是否已连接
+
+// 处理回调
+static XBOX_CALLBACK_FUNC CB_ARRAY[XBOX_CALLBACK_MAX] = {nullptr};
 
 // 过滤摇杆输出到-2048~2047;
 short analogHatFilter(uint16_t rawValue)
@@ -137,10 +137,13 @@ void hidh_callback(void *handler_args, esp_event_base_t base, int32_t id, void *
   {
     if (param->open.status == ESP_OK)
     {
-      IS_CONNECTED.store(true);
       const uint8_t *bda = esp_hidh_dev_bda_get(param->open.dev);
       ESP_LOGI(TAG, ESP_BD_ADDR_STR " OPEN: %s", ESP_BD_ADDR_HEX(bda), esp_hidh_dev_name_get(param->open.dev));
       esp_hidh_dev_dump(param->open.dev, stdout);
+      IS_CONNECTED.store(true);
+      auto cbfn = CB_ARRAY[XBOX_ON_CONNECTED];
+      if (cbfn)
+        cbfn();
     }
     else
     {
@@ -259,6 +262,9 @@ void hidh_callback(void *handler_args, esp_event_base_t base, int32_t id, void *
     memset(Controller.analog_hat, 0, sizeof(Controller.analog_hat));
     memset(Controller.button_bits, 0, sizeof(Controller.button_bits));
     IS_CONNECTED.store(false);
+    auto cbfn = CB_ARRAY[XBOX_ON_DISCONNECTED];
+    if (cbfn)
+      cbfn();
     break;
   }
   default:
@@ -293,7 +299,7 @@ void bt_controller_init()
 };
 
 // 启动xbox控制器
-void CONTROLLER::begin()
+void XBOX::begin()
 {
   ESP_LOGI(TAG, " init controller");
 
@@ -386,7 +392,7 @@ void CONTROLLER::begin()
  * @param btn 要检查的按钮枚举值
  * @return bool 如果按钮被按下返回true,否则返回false
  */
-bool CONTROLLER::getButtonPress(XBOX_BUTTON btn)
+bool XBOX::getButtonPress(XBOX_BUTTON btn)
 {
   rwlock_read_lock(&rwlock);
   auto v = this->button_bits[btn];
@@ -399,7 +405,7 @@ bool CONTROLLER::getButtonPress(XBOX_BUTTON btn)
  * @param hat 模拟摇杆的类型(枚举值 XBOX_ANALOG_HAT)
  * @return 返回模拟摇杆的当前值(-2048 到 2047), trig 为 (0 到 2047)
  */
-int16_t CONTROLLER::getAnalogHat(XBOX_ANALOG_HAT hat)
+int16_t XBOX::getAnalogHat(XBOX_ANALOG_HAT hat)
 {
   rwlock_read_lock(&rwlock);
   auto v = this->analog_hat[hat];
@@ -411,18 +417,25 @@ int16_t CONTROLLER::getAnalogHat(XBOX_ANALOG_HAT hat)
  * @brief 检查蓝牙控制器的连接状态
  * @return 如果控制器已连接返回 true，否则返回 false
  */
-bool CONTROLLER::is_connected()
+bool XBOX::is_connected()
 {
   return IS_CONNECTED.load();
 }
 
-void CONTROLLER::disconnect()
+void XBOX::disconnect()
 {
   ESP_ERROR_CHECK(esp_ble_gap_disconnect(devInfo.bda));
 }
 
-void CONTROLLER::connect_new()
+void XBOX::connect_new()
 {
   this->disconnect(); //
   SCAN_NEW.store(true);
+}
+
+void XBOX::setCallBack(XBOX_CALLBACK cb_type, XBOX_CALLBACK_FUNC cbfn)
+{
+  if (CB_ARRAY[cb_type])
+    ESP_LOGW(TAG, "Callback function overwrite");
+  CB_ARRAY[cb_type] = cbfn;
 }
