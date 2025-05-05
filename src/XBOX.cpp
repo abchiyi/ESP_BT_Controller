@@ -373,14 +373,26 @@ void XBOX::begin()
       esp_hidh_dev_open(devInfo.bda, devInfo.transport, devInfo.addr_type);
     };
 
+    uint8_t counter = 0;
     while (true)
     {
-      if (!IS_CONNECTED.load())
-        SCAN_NEW.load() ? from_scan() : from_last();
-      else
-        SCAN_NEW.store(false); // 重置扫描标志位
-
       vTaskDelay(100);
+      if (IS_CONNECTED.load())
+        continue;
+
+      if (SCAN_NEW.load())
+      {
+        from_scan();
+        SCAN_NEW.store(false);
+        counter = 0;
+      }
+      else
+      {
+        counter++;
+        from_last();
+        if (counter >= 2)
+          SCAN_NEW.store(true);
+      }
     }
   };
   auto ret = xTaskCreate(task_connect, "task_connect", 4096, NULL, 5, thc);
