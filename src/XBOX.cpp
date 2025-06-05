@@ -26,6 +26,7 @@ rwlock_t rwlock; // 读写锁
 static TaskHandle_t *thc = nullptr;    // 连接手柄任务句柄
 std::atomic<bool> SCAN_NEW(false);     // 是否连接新设备
 std::atomic<bool> IS_CONNECTED(false); // 是否已连接
+#define TRY_CONNECT_TIMES 2            // 尝试连接次数
 
 // 处理回调
 static XBOX_CALLBACK_FUNC CB_ARRAY[XBOX_CALLBACK_MAX] = {nullptr};
@@ -262,6 +263,7 @@ void hidh_callback(void *handler_args, esp_event_base_t base, int32_t id, void *
     memset(Controller.analog_hat, 0, sizeof(Controller.analog_hat));
     memset(Controller.button_bits, 0, sizeof(Controller.button_bits));
     IS_CONNECTED.store(false);
+    SCAN_NEW.store(false);
     auto cbfn = CB_ARRAY[XBOX_ON_DISCONNECTED];
     if (cbfn)
       cbfn();
@@ -277,6 +279,7 @@ void bt_controller_init()
 {
   esp_err_t ret;
 
+  // TODO 分离初始化nvs程序
   ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
   {
@@ -383,15 +386,22 @@ void XBOX::begin()
       if (SCAN_NEW.load())
       {
         from_scan();
-        SCAN_NEW.store(false);
-        counter = 0;
+        vTaskDelay(200);
       }
       else
       {
-        counter++;
-        from_last();
-        if (counter >= 2)
+        if (counter < TRY_CONNECT_TIMES)
+        {
+          counter++;
+          ESP_LOGI(TAG, "Try to connect last device,[%d/%d]",
+                   counter, TRY_CONNECT_TIMES);
+          from_last();
+        }
+        else
+        {
+          counter = 0;
           SCAN_NEW.store(true);
+        }
       }
     }
   };
@@ -441,7 +451,7 @@ void XBOX::disconnect()
 
 void XBOX::connect_new()
 {
-  this->disconnect(); //
+  this->disconnect();
   SCAN_NEW.store(true);
 }
 

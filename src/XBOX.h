@@ -48,7 +48,6 @@ class XBOX
 {
 private:
 public:
-  bool connected;
   bool button_bits[16];  // bool
   int16_t analog_hat[6]; // 0 ~ 2047
 
