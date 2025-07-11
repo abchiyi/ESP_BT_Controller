@@ -6,6 +6,7 @@
 
 typedef enum
 {
+  btnNone, // no button
   btnA,
   btnB,
   btnX,
@@ -21,17 +22,22 @@ typedef enum
   btnDirUp,
   btnDirRight,
   btnDirDown,
-  btnDirLeft
+  btnDirLeft,
+
+  __XBOX_MAX_BUTTON
 } XBOX_BUTTON;
 
 typedef enum
 {
+  hatNone, // no hat
   joyLHori,
   joyLVert,
   joyRHori,
   joyRVert,
   trigLT,
-  trigRT
+  trigRT,
+
+  __XBOX_MAX_HAT
 } XBOX_ANALOG_HAT;
 
 #define XBOX_CALLBACK_MAX 3
@@ -48,8 +54,8 @@ class XBOX
 {
 private:
 public:
-  bool button_bits[16];  // bool
-  int16_t analog_hat[6]; // 0 ~ 2047
+  bool button_bits[__XBOX_MAX_BUTTON]; // bool
+  int16_t analog_hat[__XBOX_MAX_HAT];  // 0 ~ 2047
 
   void begin();
   bool getButtonPress(XBOX_BUTTON);

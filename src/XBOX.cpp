@@ -124,6 +124,7 @@ esp_err_t read_last_dev(bt_dev *bd)
     return ESP_FAIL;
   }
 
+  nvs_close(nvs);
   return ESP_OK;
 }
 
