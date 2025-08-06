@@ -415,7 +415,7 @@ void XBOX::begin()
  * @param btn 要检查的按钮枚举值
  * @return bool 如果按钮被按下返回true,否则返回false
  */
-bool XBOX::getButtonPress(XBOX_BUTTON btn)
+bool XBOX::getButtonPress(XBOX_INPUT_t btn)
 {
   rwlock_read_lock(&rwlock);
   auto v = this->button_bits[btn];
@@ -428,10 +428,10 @@ bool XBOX::getButtonPress(XBOX_BUTTON btn)
  * @param hat 模拟摇杆的类型(枚举值 XBOX_ANALOG_HAT)
  * @return 返回模拟摇杆的当前值(-2048 到 2047), trig 为 (0 到 2047)
  */
-int16_t XBOX::getAnalogHat(XBOX_ANALOG_HAT hat)
+int16_t XBOX::getAnalogHat(XBOX_INPUT_t hat)
 {
   rwlock_read_lock(&rwlock);
-  auto v = this->analog_hat[hat];
+  auto v = this->analog_hat[hat - (XBOX_BUTTON_MAX + 1)];
   rwlock_read_unlock(&rwlock);
   return v;
 }

@@ -24,21 +24,17 @@ typedef enum
   btnDirDown,
   btnDirLeft,
 
-  __XBOX_MAX_BUTTON
-} XBOX_BUTTON;
+  XBOX_BUTTON_MAX,
 
-typedef enum
-{
-  hatNone, // no hat
-  joyLHori,
+  joyLHori = (XBOX_BUTTON_MAX + 1),
   joyLVert,
   joyRHori,
   joyRVert,
   trigLT,
   trigRT,
 
-  __XBOX_MAX_HAT
-} XBOX_ANALOG_HAT;
+  XBOX_HAT_MAX
+} XBOX_INPUT_t;
 
 #define XBOX_CALLBACK_MAX 3
 typedef enum
@@ -54,12 +50,12 @@ class XBOX
 {
 private:
 public:
-  bool button_bits[__XBOX_MAX_BUTTON]; // bool
-  int16_t analog_hat[__XBOX_MAX_HAT];  // 0 ~ 2047
+  bool button_bits[XBOX_BUTTON_MAX];                  // bool
+  int16_t analog_hat[XBOX_HAT_MAX - XBOX_BUTTON_MAX]; // 0 ~ 2047
 
   void begin();
-  bool getButtonPress(XBOX_BUTTON);
-  int16_t getAnalogHat(XBOX_ANALOG_HAT);
+  bool getButtonPress(XBOX_INPUT_t);
+  int16_t getAnalogHat(XBOX_INPUT_t);
 
   void connect_new();  // 连接新控制器
   void disconnect();   // 断开连接
