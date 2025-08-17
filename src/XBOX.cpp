@@ -300,12 +300,12 @@ void bt_controller_init()
       .callback_arg = NULL,
   };
   ESP_ERROR_CHECK(esp_hidh_init(&config));
+  ESP_LOGI(TAG, "BT controller init [OK]");
 };
 
 // 启动xbox控制器
 void XBOX::begin()
 {
-  ESP_LOGI(TAG, " init controller");
 
   // 初始化读写锁
   rwlock_init(&rwlock);
@@ -408,6 +408,8 @@ void XBOX::begin()
   };
   auto ret = xTaskCreate(task_connect, "task_connect", 4096, NULL, 5, thc);
   ESP_ERROR_CHECK(ret == pdPASS ? ESP_OK : ESP_FAIL);
+
+  ESP_LOGI(TAG, "XBOX controller bt driver [OK]");
 }
 
 /**
