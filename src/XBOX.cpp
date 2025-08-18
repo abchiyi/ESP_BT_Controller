@@ -180,12 +180,12 @@ void hidh_callback(void *handler_args, esp_event_base_t base, int32_t id, void *
     btnRB = btnBits & 0b10000000;
     */
     btnBits = param->input.data[XBOX_CONTROLLER_INDEX_BUTTONS_MAIN];
-    button_bits[btnA] = (btnBits & 0b00000001);
-    button_bits[btnB] = (btnBits & 0b00000010);
-    button_bits[btnX] = (btnBits & 0b00001000);
-    button_bits[btnY] = (btnBits & 0b00010000);
-    button_bits[btnLB] = (btnBits & 0b01000000);
-    button_bits[btnRB] = (btnBits & 0b10000000);
+    button_bits[btnA - BUTTON_OFFSET] = (btnBits & 0b00000001);
+    button_bits[btnB - BUTTON_OFFSET] = (btnBits & 0b00000010);
+    button_bits[btnX - BUTTON_OFFSET] = (btnBits & 0b00001000);
+    button_bits[btnY - BUTTON_OFFSET] = (btnBits & 0b00010000);
+    button_bits[btnLB - BUTTON_OFFSET] = (btnBits & 0b01000000);
+    button_bits[btnRB - BUTTON_OFFSET] = (btnBits & 0b10000000);
 
     /*
     btnSelect = btnBits & 0b00000100;
@@ -196,17 +196,17 @@ void hidh_callback(void *handler_args, esp_event_base_t base, int32_t id, void *
     */
 
     btnBits = param->input.data[XBOX_CONTROLLER_INDEX_BUTTONS_CENTER];
-    button_bits[btnSelect] = (btnBits & 0b00000100);
-    button_bits[btnStart] = (btnBits & 0b00001000);
-    button_bits[btnXbox] = (btnBits & 0b00010000);
-    button_bits[btnLS] = (btnBits & 0b00100000);
-    button_bits[btnRS] = (btnBits & 0b01000000);
+    button_bits[btnSelect - BUTTON_OFFSET] = (btnBits & 0b00000100);
+    button_bits[btnStart - BUTTON_OFFSET] = (btnBits & 0b00001000);
+    button_bits[btnXbox - BUTTON_OFFSET] = (btnBits & 0b00010000);
+    button_bits[btnLS - BUTTON_OFFSET] = (btnBits & 0b00100000);
+    button_bits[btnRS - BUTTON_OFFSET] = (btnBits & 0b01000000);
 
     /*
     btnShare = btnBits & 0b00000001;
     */
     btnBits = param->input.data[XBOX_CONTROLLER_INDEX_BUTTONS_SHARE];
-    button_bits[btnShare] = (btnBits & 0b00000001);
+    button_bits[btnShare - BUTTON_OFFSET] = (btnBits & 0b00000001);
 
     btnBits = param->input.data[XBOX_CONTROLLER_INDEX_BUTTONS_DIR];
     auto dirUP = btnBits == 1 || btnBits == 2 || btnBits == 8;
@@ -214,10 +214,10 @@ void hidh_callback(void *handler_args, esp_event_base_t base, int32_t id, void *
     auto dirDown = 4 <= btnBits && btnBits <= 6;
     auto dirLeft = 6 <= btnBits && btnBits <= 8;
 
-    button_bits[btnDirUp] = dirUP;
-    button_bits[btnDirRight] = dirRight;
-    button_bits[btnDirDown] = dirDown;
-    button_bits[btnDirLeft] = dirLeft;
+    button_bits[btnDirUp - BUTTON_OFFSET] = dirUP;
+    button_bits[btnDirRight - BUTTON_OFFSET] = dirRight;
+    button_bits[btnDirDown - BUTTON_OFFSET] = dirDown;
+    button_bits[btnDirLeft - BUTTON_OFFSET] = dirLeft;
 
     /*
      * joyLHori 0
@@ -233,12 +233,12 @@ void hidh_callback(void *handler_args, esp_event_base_t base, int32_t id, void *
              ((uint16_t)param->input.data[index + 1] << 8);
     };
 
-    analog_hat[joyLHori] = analogHatFilter(read_analog(0));
-    analog_hat[joyLVert] = analogHatFilter(read_analog(2));
-    analog_hat[joyRHori] = analogHatFilter(read_analog(4));
-    analog_hat[joyRVert] = analogHatFilter(read_analog(6));
-    analog_hat[trigLT] = read_analog(8);
-    analog_hat[trigRT] = read_analog(10);
+    analog_hat[joyLHori - JOY_OFFSET] = analogHatFilter(read_analog(0));
+    analog_hat[joyLVert - JOY_OFFSET] = analogHatFilter(read_analog(2));
+    analog_hat[joyRHori - JOY_OFFSET] = analogHatFilter(read_analog(4));
+    analog_hat[joyRVert - JOY_OFFSET] = analogHatFilter(read_analog(6));
+    analog_hat[trigLT - JOY_OFFSET] = read_analog(8);
+    analog_hat[trigRT - JOY_OFFSET] = read_analog(10);
 
     // 将组装好的数据写入
     rwlock_write_lock(&rwlock);
@@ -246,6 +246,9 @@ void hidh_callback(void *handler_args, esp_event_base_t base, int32_t id, void *
     memcpy(Controller.button_bits, button_bits, sizeof(Controller.button_bits));
     rwlock_write_unlock(&rwlock);
 
+    auto cbfn = CB_ARRAY[XBOX_ON_INPUT];
+    if (cbfn)
+      cbfn();
     break;
   }
   case ESP_HIDH_FEATURE_EVENT:
@@ -420,7 +423,7 @@ void XBOX::begin()
 bool XBOX::getButtonPress(XBOX_INPUT_t btn)
 {
   rwlock_read_lock(&rwlock);
-  auto v = this->button_bits[btn];
+  auto v = this->button_bits[btn - BUTTON_OFFSET];
   rwlock_read_unlock(&rwlock);
   return v;
 }
@@ -433,7 +436,7 @@ bool XBOX::getButtonPress(XBOX_INPUT_t btn)
 int16_t XBOX::getAnalogHat(XBOX_INPUT_t hat)
 {
   rwlock_read_lock(&rwlock);
-  auto v = this->analog_hat[hat - (XBOX_BUTTON_MAX + 1)];
+  auto v = this->analog_hat[hat - JOY_OFFSET];
   rwlock_read_unlock(&rwlock);
   return v;
 }

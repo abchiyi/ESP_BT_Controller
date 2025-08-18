@@ -36,6 +36,9 @@ typedef enum
   XBOX_HAT_MAX
 } XBOX_INPUT_t;
 
+#define BUTTON_OFFSET 1
+#define JOY_OFFSET (XBOX_BUTTON_MAX + 1)
+
 #define XBOX_CALLBACK_MAX 3
 typedef enum
 {
@@ -50,8 +53,8 @@ class XBOX
 {
 private:
 public:
-  bool button_bits[XBOX_BUTTON_MAX];                  // bool
-  int16_t analog_hat[XBOX_HAT_MAX - XBOX_BUTTON_MAX]; // 0 ~ 2047
+  bool button_bits[XBOX_BUTTON_MAX - BUTTON_OFFSET]; // bool
+  int16_t analog_hat[XBOX_HAT_MAX - JOY_OFFSET];     // 0 ~ 2047
 
   void begin();
   bool getButtonPress(XBOX_INPUT_t);
